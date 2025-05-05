@@ -1,0 +1,15 @@
+[
+  {
+    "id": 1,
+    "name": "Geral",
+    "members": []
+  },
+  {
+    "id": 2,
+    "name": "PM: japa ⇄ tina",
+    "members": [
+      "japa",
+      "tina"
+    ]
+  }
+]

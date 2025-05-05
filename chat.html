@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat Neon</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">💬 Chat Neon</div>
+      <button class="button-pm" id="createPM">+ PM</button>
+      <ul id="groupList"></ul>
+    </aside>
+
+    <!-- Chat Principal -->
+    <div class="chat-container">
+      <header class="chat-header">
+        <span id="currentGroup">Escolha um grupo</span>
+        <button id="toggleTheme">🌓</button>
+      </header>
+
+      <div class="chat-messages" id="messages"></div>
+
+      <div class="chat-input">
+        <input type="text" id="messageInput" placeholder="Digite sua mensagem..." />
+        <button id="send">Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <script>
+    const socket = io("http://localhost:3001");
+    const userObj = JSON.parse(localStorage.getItem("user"));
+
+    if (!userObj || !userObj.username) {
+      window.location.href = "login.html";
+    }
+
+    let currentGroupId = 1;
+    let currentNick = userObj.username;
+
+    function loadGroups() {
+      fetch(`http://localhost:3001/api/groups/${currentNick}`)
+        .then(res => res.json())
+        .then(groups => {
+          const list = document.getElementById("groupList");
+          list.innerHTML = "";
+          groups.forEach(group => {
+            const li = document.createElement("li");
+            li.textContent = group.name;
+            li.onclick = () => switchGroup(group.id, group.name, li);
+            list.appendChild(li);
+            if (group.id === 1) li.classList.add("active");
+          });
+        });
+    }
+
+    function switchGroup(id, name, element) {
+      currentGroupId = id;
+      document.getElementById("currentGroup").textContent = `# ${name}`;
+      document.querySelectorAll("#groupList li").forEach(li => li.classList.remove("active"));
+      element.classList.add("active");
+      loadMessages();
+    }
+
+    function loadMessages() {
+      fetch(`http://localhost:3001/api/messages/${currentGroupId}`)
+        .then(res => res.json())
+        .then(messages => {
+          const box = document.getElementById("messages");
+          box.innerHTML = "";
+          messages.forEach(msg => {
+            const el = document.createElement("div");
+            el.classList.add("message");
+            el.dataset.id = msg.id;
+            el.innerHTML = `<strong>${msg.nickname}:</strong> ${msg.content}`;
+            if (msg.nickname === currentNick) {
+              const btn = document.createElement("button");
+              btn.textContent = "🗑️";
+              btn.classList.add("delete-btn");
+              btn.onclick = () => deleteMessage(msg.id, el);
+              el.appendChild(btn);
+            }
+            box.appendChild(el);
+          });
+          box.scrollTop = box.scrollHeight;
+        });
+    }
+
+    function deleteMessage(id, element) {
+      fetch(`http://localhost:3001/api/messages/${id}`, { method: "DELETE" })
+        .then(res => res.json())
+        .then(() => {
+          element.remove();
+        });
+    }
+
+    document.getElementById("send").onclick = () => {
+      const msg = document.getElementById("messageInput").value.trim();
+      if (msg && currentGroupId) {
+        socket.emit("sendMessage", {
+          groupId: currentGroupId,
+          nickname: currentNick,
+          content: msg
+        });
+        document.getElementById("messageInput").value = "";
+      }
+    };
+
+    socket.on("newMessage", (msg) => {
+      if (msg.groupId === currentGroupId) loadMessages();
+    });
+
+    socket.on("deleteMessage", ({ id }) => {
+      const el = document.querySelector(`.chat-messages .message[data-id='${id}']`);
+      if (el) el.remove();
+    });
+
+    document.getElementById("toggleTheme").onclick = () =>
+      document.body.classList.toggle("dark");
+
+    document.getElementById("createPM").onclick = () => {
+      const nick = prompt("Nome do usuário para PM:");
+      if (nick && nick !== currentNick) {
+        fetch("http://localhost:3001/api/pm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user1: currentNick, user2: nick })
+        })
+        .then(res => res.json())
+        .then(() => loadGroups());
+      } else {
+        alert("Nick inválido ou igual ao seu.");
+      }
+    };
+
+    window.onload = () => {
+      loadGroups();
+      loadMessages();
+    };
+  </script>
+</body>
+</html>

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Painel Admin</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar (opcional para admin) -->
+    <aside class="sidebar" style="width: 300px;">
+      <div class="logo">⚙️ Painel Admin</div>
+      <div class="group-box">
+        <button class="logout-button" onclick="logout()">Sair</button>
+      </div>
+    </aside>
+
+    <!-- Conteúdo Principal -->
+    <div class="chat-container">
+      <header class="chat-header">
+        <h2 id="currentGroup">Administração do Sistema</h2>
+        <button id="toggleTheme">🌓</button>
+      </header>
+
+      <div class="chat-messages" style="padding: 2rem; height: calc(100vh - 160px);">
+        <div class="group-box">
+          <h3>Usuários Cadastrados</h3>
+          <ul id="userList" class="user-list"></ul>
+        </div>
+
+        <div class="group-box">
+          <h3>Adicionar Novo Usuário</h3>
+          <div class="admin-section">
+            <input 
+              type="text" 
+              id="newUser" 
+              class="chat-input input" 
+              placeholder="Nickname" 
+              style="width: 100%; margin-bottom: 1rem;"
+            />
+            <input 
+              type="password" 
+              id="newPass" 
+              class="chat-input input" 
+              placeholder="Senha" 
+              style="width: 100%; margin-bottom: 1rem;"
+            />
+            <label class="checkbox-label">
+              <input type="checkbox" id="newAdmin" /> Administrador
+            </label>
+            <button 
+              class="button-pm" 
+              onclick="addUser()"
+              style="margin-top: 1rem; width: 100%;"
+            >
+              ➕ Criar Usuário
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById("toggleTheme").onclick = () =>
+      document.body.classList.toggle("dark");
+
+    // Mantenha o JavaScript original aqui
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user || !user.isAdmin) window.location.href = "login.html";
+
+    function loadUsers() {
+      fetch("http://localhost:3001/api/users")
+        .then(res => res.json())
+        .then(users => {
+          const ul = document.getElementById("userList");
+          ul.innerHTML = "";
+          users.forEach(u => {
+            const li = document.createElement("li");
+            li.className = "user-item";
+            li.innerHTML = `
+              <span>${u.username} - ${u.isAdmin ? "👑 Admin" : "👤 Usuário"}</span>
+              <button class="logout-button delete" data-id="${u.id}">🗑️ Remover</button>
+            `;
+            ul.appendChild(li);
+          });
+
+          // Adicionar evento de deletar para cada botão
+          document.querySelectorAll('.logout-button.delete').forEach(button => {
+            button.addEventListener('click', (event) => {
+              const userId = event.target.getAttribute('data-id');
+              console.log('Deletando usuário com ID:', userId);  // Verificar se o ID está sendo passado corretamente
+              deleteUser(userId);
+            });
+          });
+        });
+    }
+
+    function deleteUser(id) {
+      console.log('Deletando usuário com ID:', id);  // Verificar se o ID está sendo passado corretamente
+      fetch(`http://localhost:3001/api/users/${id}`, { method: "DELETE" })
+        .then(response => {
+          if (response.ok) {
+            console.log('Usuário deletado com sucesso');
+            loadUsers();
+          } else {
+            console.error('Falha ao deletar usuário');
+          }
+        })
+        .catch(error => console.error('Erro ao tentar deletar usuário:', error));
+    }
+
+    function addUser() {
+      const username = document.getElementById("newUser").value;
+      const password = document.getElementById("newPass").value;
+      const isAdmin = document.getElementById("newAdmin").checked;
+
+      if (!username || !password) {
+        alert("Por favor, preencha todos os campos.");
+        return;
+      }
+
+      fetch("http://localhost:3001/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password, isAdmin })
+      }).then(() => {
+        loadUsers();
+        document.getElementById("newUser").value = "";
+        document.getElementById("newPass").value = "";
+      });
+    }
+
+    function logout() {
+      localStorage.removeItem("user");
+      window.location.href = "login.html";
+    }
+
+    loadUsers();
+  </script>
+</body>
+</html>

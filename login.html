@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login - Chat</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #1a1a1d, #3c1053);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .login-container {
+      background: #2c2c34;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 0 20px rgba(255, 0, 150, 0.3);
+      width: 350px;
+    }
+
+    h2 {
+      text-align: center;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 8px;
+      background-color: #1f1f25;
+      color: #fff;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 15px;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #ff0066, #6600ff);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    .error {
+      color: #ff8080;
+      margin-top: 10px;
+      text-align: center;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <h2>Entrar no Chat</h2>
+    <input type="text" id="username" placeholder="Usuário" required>
+    <input type="password" id="password" placeholder="Senha" required>
+    <button id="loginButton">Entrar</button>
+    <div class="error" id="error"></div>
+  </div>
+
+  <script>
+    document.getElementById('loginButton').addEventListener('click', login);
+
+    async function login(event) {
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const errorDiv = document.getElementById('error');
+
+      event.preventDefault();
+
+      if (!username || !password) {
+        errorDiv.textContent = "Preencha todos os campos!";
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          errorDiv.textContent = data.error || 'Erro ao fazer login.';
+          return;
+        }
+
+        // Armazena o usuário no localStorage e redireciona
+        localStorage.setItem('user', JSON.stringify(data));
+
+        // Garantir que o redirecionamento só ocorre quando o login for bem-sucedido
+        window.location.href = data.redirectTo;
+      } catch (err) {
+        errorDiv.textContent = 'Erro de conexão com o servidor.';
+      }
+    }
+  </script>
+
+</body>
+</html>
